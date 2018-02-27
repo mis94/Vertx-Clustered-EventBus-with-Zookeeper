@@ -59,6 +59,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void addMessageRoute() {
         router.route(HttpMethod.POST, "/weather").handler(routingContext -> {
+            System.out.println("handler started!");
             JsonObject jsonMessage = routingContext.getBodyAsJson();
             eventBus.send("Weather", jsonMessage, messageAsyncResult -> {
                 if(messageAsyncResult.succeeded()) {
