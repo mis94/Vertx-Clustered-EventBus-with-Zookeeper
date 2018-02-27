@@ -1,15 +1,28 @@
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.eventbus.EventBusOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.spi.cluster.ClusterManager;
 import io.vertx.spi.cluster.zookeeper.ZookeeperClusterManager;
 
 public class MainClass2 {
     public static void main(String[] args) {
-        ClusterManager zookeeperClusterManager = new ZookeeperClusterManager();
+        // add the IP of the machine hosting the cluster manager
+        JsonObject zkConfig = new JsonObject();
+        zkConfig.put("zookeeperHosts", "172.19.1.13");
+        zkConfig.put("rootPath", "io.vertx");
+        zkConfig.put("retry", new JsonObject()
+                .put("initialSleepTime", 3000)
+                .put("maxTimes", 3));
+        ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
 
+        // add my IP as clusterHost
         // EventBusOptions eventBusOptions = configureEventBus();
-        VertxOptions options = new VertxOptions().setClusterManager(zookeeperClusterManager).setClustered(true);
+        VertxOptions options = new VertxOptions()
+                .setClustered(true)
+                .setClusterHost("172.19.1.56")
+                .setClusterPort(17001)
+                .setClusterManager(zookeeperClusterManager);
 
         Vertx.clusteredVertx(options, res -> {
             if (res.succeeded()) {
@@ -29,11 +42,5 @@ public class MainClass2 {
             }
         });
         System.out.println("#####################################");
-    }
-
-    private static EventBusOptions configureEventBus() {
-        EventBusOptions eventBusOptions = new EventBusOptions()
-                .setClusterPublicHost("172.19.1.56").setClusterPublicPort(8082);
-        return eventBusOptions;
     }
 }

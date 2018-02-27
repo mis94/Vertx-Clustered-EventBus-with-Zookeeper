@@ -48,6 +48,7 @@ public class WeatherVerticle extends AbstractVerticle {
                         if(httpResponseAsyncResult.succeeded()) {
                             JsonObject jsonReply = httpResponseAsyncResult.result().body();
                             jsonReply.put("reply", "how interesting!");
+                            System.out.println("web client finished");
                             message.reply(jsonReply);
                         }else {
                             System.out.println(httpResponseAsyncResult.cause());
