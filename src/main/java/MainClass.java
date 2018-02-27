@@ -7,13 +7,28 @@ import io.vertx.spi.cluster.zookeeper.ZookeeperClusterManager;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.imps.CuratorFrameworkImpl;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 
 public class MainClass {
-    public static void main(String[] args) {
-        ClusterManager zookeeperClusterManager = new ZookeeperClusterManager();
+    public static void main(String[] args) throws UnknownHostException {
+        JsonObject zkConfig = new JsonObject();
+        zkConfig.put("zookeeperHosts", "172.19.1.13");
+        zkConfig.put("rootPath", "io.vertx");
+        zkConfig.put("retry", new JsonObject()
+                .put("initialSleepTime", 3000)
+                .put("maxTimes", 3));
+        ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
 
+        // zookeeperClusterManager.setVertx(Vertx.vertx());
         // EventBusOptions eventBusOptions = configureEventBus();
-        VertxOptions options = new VertxOptions().setClusterManager(zookeeperClusterManager);
+        VertxOptions options = new VertxOptions()
+               // .setEventBusOptions(configureEventBus())
+                .setClustered(true)
+                .setClusterHost(InetAddress.getLocalHost().getHostAddress())
+                .setClusterPort(17001)
+                .setClusterManager(zookeeperClusterManager);
 
         Vertx.clusteredVertx(options, res -> {
             if (res.succeeded()) {
@@ -37,7 +52,7 @@ public class MainClass {
 
     private static EventBusOptions configureEventBus() {
         EventBusOptions eventBusOptions = new EventBusOptions()
-                .setClusterPublicHost("172.19.1.56").setClusterPublicPort(8082);
+                .setClusterPublicHost("172.19.1.13").setClusterPublicPort(8082);
         return eventBusOptions;
     }
 }
