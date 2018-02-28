@@ -1,3 +1,7 @@
+import io.vertx.config.ConfigRetriever;
+import io.vertx.config.ConfigRetrieverOptions;
+import io.vertx.config.ConfigStoreOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
@@ -9,29 +13,51 @@ import java.net.UnknownHostException;
 
 
 public class MainClass2 {
-    public static void main(String[] args) throws UnknownHostException {
-        JsonObject zkConfig = configureClusterManager();
-        ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
+    private static ConfigRetriever configRetriever;
+    private static JsonObject configurations;
 
-        VertxOptions options = configureVertx(zookeeperClusterManager);
-        Vertx.clusteredVertx(options, res -> {
-            if (res.succeeded()) {
-                Vertx vertx = res.result();
-                System.out.println("Hello from Vert.x instance deploying WeatherVerticle");
-                vertx.deployVerticle("verticle.WeatherVerticle");
+    public static void main(String[] args) throws UnknownHostException {
+        configureConfigRetriever();
+        Future<JsonObject> future = ConfigRetriever.getConfigAsFuture(configRetriever);
+        future.setHandler(jsonObjectAsyncResult -> {
+            if(jsonObjectAsyncResult.failed()) {
+                System.err.println("Error: failed to load application configuration");
+            }else {
+                configurations = jsonObjectAsyncResult.result();
+                JsonObject zkConfig = configureClusterManager();
+                ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
+
+                VertxOptions options = configureVertx(zookeeperClusterManager);
+                Vertx.clusteredVertx(options, res -> {
+                    if (res.succeeded()) {
+                        Vertx vertx = res.result();
+                        System.out.println("Hello from Vert.x instance deploying WeatherVerticle");
+                        vertx.deployVerticle("verticle.WeatherVerticle");
+                    }
+                });
+                System.out.println("#####################################");
             }
         });
-        System.out.println("#####################################");
+    }
+
+    private static void configureConfigRetriever() {
+        ConfigStoreOptions file = new ConfigStoreOptions()
+                .setType("file")
+                .setFormat("json")
+                .setConfig(new JsonObject().put("path", "src/main/conf/applicationconfig.json"));
+
+        ConfigRetrieverOptions options = new ConfigRetrieverOptions().addStore(file);
+        configRetriever = ConfigRetriever.create(Vertx.vertx(), options);
     }
 
     private static JsonObject configureClusterManager() {
         // add the IP of the machine hosting the cluster manager
         JsonObject zkConfig = new JsonObject();
-        zkConfig.put("zookeeperHosts", "172.19.1.56");
+        zkConfig.put("zookeeperHosts", configurations.getString("zookeeper.host"));
         zkConfig.put("rootPath", "io.vertx");
         zkConfig.put("retry", new JsonObject()
-                .put("initialSleepTime", 3000)
-                .put("maxTimes", 3));
+                .put("initialSleepTime", configurations.getInteger("zookeeper.initialSleepTime"))
+                .put("maxTimes", configurations.getInteger("zookeeper.maxTimes")));
         return zkConfig;
     }
 
@@ -40,8 +66,8 @@ public class MainClass2 {
         // if vertx instances run on the same machine then we must use different port for each instance
         VertxOptions options = new VertxOptions()
                 .setClustered(true)
-                .setClusterHost("172.19.1.56") // InetAddress.getLocalHost().getHostAddress()
-                .setClusterPort(17002)
+                .setClusterHost(configurations.getString("cluster.host")) // InetAddress.getLocalHost().getHostAddress()
+                .setClusterPort(configurations.getInteger("cluster.port2"))
                 .setClusterManager(clusterManager);
         return options;
     }
