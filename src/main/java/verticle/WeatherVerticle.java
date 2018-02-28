@@ -22,19 +22,6 @@ public class WeatherVerticle extends AbstractVerticle {
         eventBus = vertx.eventBus();
     }
 
-//    private void registerHandler() {
-//        MessageConsumer<JsonObject> messageConsumer = eventBus.consumer(verticleAddress);
-//        messageConsumer.handler(message -> {
-//            // because we made MessageConsumer<JsonObject> so all message instances are of type JsonObject
-//            // we could have made it MessageConsumer<String> so that all message instances would have been of type String
-//            JsonObject jsonMessage = message.body();
-//            System.out.println(jsonMessage.getValue("message_from_postman"));
-//            JsonObject jsonReply = new JsonObject();
-//            jsonReply.put("reply", "how interesting!");
-//            message.reply(jsonReply);
-//        });
-//    }
-
     private void registerHandler() {
         MessageConsumer<JsonObject> messageConsumer = eventBus.consumer(verticleAddress);
         messageConsumer.handler(message -> {
