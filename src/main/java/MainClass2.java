@@ -1,6 +1,7 @@
 import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -31,8 +32,9 @@ public class MainClass2 {
                 Vertx.clusteredVertx(options, res -> {
                     if (res.succeeded()) {
                         Vertx vertx = res.result();
+                        DeploymentOptions deploymentOptions = new DeploymentOptions().setInstances(2);
                         System.out.println("Hello from Vert.x instance deploying WeatherVerticle");
-                        vertx.deployVerticle("verticle.WeatherVerticle");
+                        vertx.deployVerticle("verticle.WeatherVerticle", deploymentOptions);
                     }
                 });
                 System.out.println("#####################################");

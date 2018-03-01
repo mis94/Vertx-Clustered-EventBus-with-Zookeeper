@@ -41,6 +41,7 @@ public class WeatherVerticle extends AbstractVerticle {
                             System.out.println(httpResponseAsyncResult.cause());
                         }
                     });
+            System.out.println("Web client is non-blocking!!!");
         });
     }
 }
