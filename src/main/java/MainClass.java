@@ -20,27 +20,35 @@ public class MainClass {
     public static void main(String[] args) throws UnknownHostException {
         configureConfigRetriever();
         Future<JsonObject> future = ConfigRetriever.getConfigAsFuture(configRetriever);
-
+        // compose as used to make sequential future results (to avoid callback hell), just like .then() in JS promises
         Future<Void> startFuture = Future.future();
-        System.out.println(future);
-        future.compose(v -> {
-            configurations = v;
+//        System.out.println(future); unresolved future
+        future.compose(jsonObject -> {
+            configurations = jsonObject;
             JsonObject zkConfig = configureClusterManager();
             ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
 
             VertxOptions options = configureVertx(zookeeperClusterManager);
             Future<Vertx> fut2 = Future.future();
             Vertx.clusteredVertx(options, fut2.completer());
+//            fut2.complete(null); throws an error handled in the handler we created below
             return fut2;
 
-        }).compose(vertxx -> {
-//            Vertx vertx =vertxx;
+        }).compose(vertx -> {
             DeploymentOptions deploymentOptions = new DeploymentOptions().setInstances(2);
             System.out.println("Hello from Vert.x instance deploying MainVerticle");
-            vertxx.deployVerticle("verticle.MainVerticle", deploymentOptions);
+            vertx.deployVerticle("verticle.MainVerticle", deploymentOptions);
             System.out.println("#####################################");
-
-        },startFuture);
+        },startFuture)
+                .setHandler(ar -> {
+                    System.out.println("hello darkness");
+                    if(ar.succeeded()){
+                        startFuture.complete();
+                    }else{
+                        startFuture.fail(ar.cause());
+                    }
+                    System.out.println(ar);
+                });
 //        future.setHandler(jsonObjectAsyncResult -> {
 //            if(jsonObjectAsyncResult.failed()) {
 //                System.out.println("failure");
