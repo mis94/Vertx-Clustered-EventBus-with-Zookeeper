@@ -20,26 +20,48 @@ public class MainClass {
     public static void main(String[] args) throws UnknownHostException {
         configureConfigRetriever();
         Future<JsonObject> future = ConfigRetriever.getConfigAsFuture(configRetriever);
-        future.setHandler(jsonObjectAsyncResult -> {
-            if(jsonObjectAsyncResult.failed()) {
-                System.out.println("failure");
-            }else {
-                configurations = jsonObjectAsyncResult.result();
-                JsonObject zkConfig = configureClusterManager();
-                ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
 
-                VertxOptions options = configureVertx(zookeeperClusterManager);
-                Vertx.clusteredVertx(options, res -> {
-                    if (res.succeeded()) {
-                        Vertx vertx = res.result();
-                        DeploymentOptions deploymentOptions = new DeploymentOptions().setInstances(2);
-                        System.out.println("Hello from Vert.x instance deploying MainVerticle");
-                        vertx.deployVerticle("verticle.MainVerticle", deploymentOptions);
-                    }
-                });
-                System.out.println("#####################################");
-            }
-        });
+        Future<Void> startFuture = Future.future();
+        System.out.println(future);
+        future.compose(v -> {
+            configurations = v;
+            JsonObject zkConfig = configureClusterManager();
+            ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
+
+            VertxOptions options = configureVertx(zookeeperClusterManager);
+            Future<Vertx> fut2 = Future.future();
+            Vertx.clusteredVertx(options, fut2.completer());
+            return fut2;
+
+        }).compose(vertxx -> {
+//            Vertx vertx =vertxx;
+            DeploymentOptions deploymentOptions = new DeploymentOptions().setInstances(2);
+            System.out.println("Hello from Vert.x instance deploying MainVerticle");
+            vertxx.deployVerticle("verticle.MainVerticle", deploymentOptions);
+            System.out.println("#####################################");
+
+        },startFuture);
+//        future.setHandler(jsonObjectAsyncResult -> {
+//            if(jsonObjectAsyncResult.failed()) {
+//                System.out.println("failure");
+//            }else {
+//                configurations = jsonObjectAsyncResult.result();
+//                JsonObject zkConfig = configureClusterManager();
+//                ClusterManager zookeeperClusterManager = new ZookeeperClusterManager(zkConfig);
+//
+//                VertxOptions options = configureVertx(zookeeperClusterManager);
+//
+//                Vertx.clusteredVertx(options, res -> {
+//                    if (res.succeeded()) {
+//                        Vertx vertx = res.result();
+//                        DeploymentOptions deploymentOptions = new DeploymentOptions().setInstances(2);
+//                        System.out.println("Hello from Vert.x instance deploying MainVerticle");
+//                        vertx.deployVerticle("verticle.MainVerticle", deploymentOptions);
+//                    }
+//                });
+//                System.out.println("#####################################");
+//            }
+//        });
     }
 
     private static void configureConfigRetriever() {
